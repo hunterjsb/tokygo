@@ -5,6 +5,9 @@ let selectedLayer = null;
 let geojsonLayer = null;
 let hexagonsVisible = true;
 
+// API base URL - gets replaced at build time from .env
+const API_BASE_URL = "http://localhost:8080";
+
 // Initialize the map centered on central Japan
 const map = L.map("map").setView([35.0, 135.5], 8);
 
@@ -15,7 +18,7 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
 }).addTo(map);
 
 // Fetch cities data from API
-fetch("/api/cities")
+fetch(`${API_BASE_URL}/api/cities`)
   .then((response) => response.json())
   .then((data) => {
     cities = data.cities;
@@ -85,7 +88,7 @@ function toggleHexagons() {
 
 function loadGeoJSON() {
   // Load and display the GeoJSON from API
-  fetch("/api/geojson")
+  fetch(`${API_BASE_URL}/api/geojson`)
     .then((response) => {
       // Check cache status
       const cacheStatus = response.headers.get("X-Cache");

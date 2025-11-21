@@ -9,6 +9,23 @@ import (
 	"time"
 )
 
+// corsMiddleware adds CORS headers to responses
+func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
 // Config holds server configuration
 type Config struct {
 	Resolution int
@@ -37,10 +54,10 @@ func NewServer(rootDir string) *Server {
 
 // RegisterHandlers sets up all HTTP routes
 func (s *Server) RegisterHandlers() {
-	// API endpoints
-	http.HandleFunc("/api/cities", s.handleCities)
-	http.HandleFunc("/api/geojson", s.handleGeoJSON)
-	http.HandleFunc("/api/config", s.handleConfig)
+	// API endpoints with CORS support
+	http.HandleFunc("/api/cities", corsMiddleware(s.handleCities))
+	http.HandleFunc("/api/geojson", corsMiddleware(s.handleGeoJSON))
+	http.HandleFunc("/api/config", corsMiddleware(s.handleConfig))
 
 	// Custom handler for static files that doesn't catch /api routes
 	frontendDir := filepath.Join(s.RootDir, "frontend")
