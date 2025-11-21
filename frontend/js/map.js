@@ -1,21 +1,15 @@
 // Global variables
 let cityColors = {};
 let cities = [];
-let selectedLayer = null;
-let geojsonLayer = null;
-let hexagonsVisible = true;
+let routesVisible = true;
+let map;
 
 // API base URL - gets replaced at build time from .env
 const API_BASE_URL = "http://localhost:8080";
 
-// Initialize the map centered on central Japan
-const map = L.map("map").setView([35.0, 135.5], 8);
-
-// Add a nice light-themed base map
-L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-  attribution: "© OpenStreetMap contributors © CARTO",
-  maxZoom: 19,
-}).addTo(map);
+// Mapbox public token (safe for frontend, used for map display)
+mapboxgl.accessToken =
+  "pk.eyJ1IjoiaHVudGVyanNiIiwiYSI6ImNtaThkeWo4dzBiOTkyd3Exb3FpdzdweWQifQ.e8TLoDm5tLdFSr0KTwEpLA";
 
 // Fetch cities data from API
 fetch(`${API_BASE_URL}/api/cities`)
@@ -27,11 +21,14 @@ fetch(`${API_BASE_URL}/api/cities`)
     // Populate legend
     populateLegend();
 
-    // Add city markers after data is loaded
-    addCityMarkers();
+    // Initialize map after cities are loaded
+    initializeMap();
 
-    // Load GeoJSON after cities are loaded
-    loadGeoJSON();
+    // Load routes by default
+    loadRoutes();
+
+    // Hide loading indicator
+    document.getElementById("loading").style.display = "none";
   })
   .catch((error) => {
     console.error("Error loading cities:", error);
@@ -43,158 +40,196 @@ function populateLegend() {
   const legendItems = document.getElementById("legend-items");
   legendItems.innerHTML = "";
 
+  const cityIcons = {
+    Tokyo: "fa-building",
+    Kyoto: "fa-torii-gate",
+    Osaka: "fa-landmark",
+  };
+
   cities.forEach((city) => {
-    const color = cityColors[city.name];
     const item = document.createElement("div");
     item.className = "legend-item";
     item.innerHTML = `
-      <div class="legend-color" style="background-color: ${color};"></div>
+      <i class="fas ${cityIcons[city.name] || "fa-map-marker-alt"} legend-icon"></i>
       <span>${city.name}</span>
     `;
     legendItems.appendChild(item);
   });
 }
 
-function addCityMarkers() {
-  cities.forEach((city) => {
-    const marker = L.circleMarker([city.lat, city.lng], {
-      radius: 8,
-      fillColor: cityColors[city.name],
-      color: "#fff",
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.9,
-    }).addTo(map);
+function togglePanel() {
+  const panel = document.getElementById("info-panel");
+  const content = document.getElementById("panel-content");
+  const icon = document.getElementById("collapse-icon");
 
-    marker.bindPopup(
-      `<strong>${city.name}</strong><br>${city.lat.toFixed(4)}, ${city.lng.toFixed(4)}`,
-    );
-  });
-}
+  panel.classList.toggle("collapsed");
 
-function toggleHexagons() {
-  if (geojsonLayer) {
-    if (hexagonsVisible) {
-      map.removeLayer(geojsonLayer);
-      hexagonsVisible = false;
-      document.getElementById("toggle-btn").textContent = "Show Hexagons";
-    } else {
-      map.addLayer(geojsonLayer);
-      hexagonsVisible = true;
-      document.getElementById("toggle-btn").textContent = "Hide Hexagons";
-    }
+  if (panel.classList.contains("collapsed")) {
+    icon.classList.remove("fa-chevron-down");
+    icon.classList.add("fa-chevron-up");
+  } else {
+    icon.classList.remove("fa-chevron-up");
+    icon.classList.add("fa-chevron-down");
   }
 }
 
-function loadGeoJSON() {
-  // Load and display the GeoJSON from API
-  fetch(`${API_BASE_URL}/api/geojson`)
-    .then((response) => {
-      // Check cache status
-      const cacheStatus = response.headers.get("X-Cache");
-      if (cacheStatus) {
-        console.log("GeoJSON cache status:", cacheStatus);
-      }
-      return response.json();
-    })
+function initializeMap() {
+  // Initialize Mapbox map with sleek dark style
+  map = new mapboxgl.Map({
+    container: "map",
+    style: "mapbox://styles/mapbox/dark-v11",
+    center: [135.5, 35.0],
+    zoom: 7,
+    projection: "globe",
+  });
+
+  // Add navigation controls
+  map.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+  // Add city markers with Font Awesome icons
+  const cityIcons = {
+    Tokyo: "fa-building",
+    Kyoto: "fa-torii-gate",
+    Osaka: "fa-landmark",
+  };
+
+  cities.forEach((city) => {
+    const el = document.createElement("div");
+    el.className = "city-marker";
+    el.innerHTML = `<i class="fas ${cityIcons[city.name] || "fa-map-marker-alt"}"></i>`;
+
+    new mapboxgl.Marker({ element: el, anchor: "bottom", draggable: false })
+      .setLngLat([city.lng, city.lat])
+      .setPopup(
+        new mapboxgl.Popup({ offset: 25 }).setHTML(
+          `<div style="text-align: center;">
+            <i class="fas ${cityIcons[city.name]} fa-2x" style="margin-bottom: 8px; color: #fff;"></i><br>
+            <strong>${city.name}</strong>
+          </div>`,
+        ),
+      )
+      .addTo(map);
+  });
+}
+
+function toggleRoutes() {
+  if (routesVisible) {
+    if (map.getLayer("routes-line")) {
+      map.setLayoutProperty("routes-line", "visibility", "none");
+    }
+    routesVisible = false;
+    document.getElementById("toggle-routes-btn").innerHTML =
+      '<i class="fas fa-route"></i><span>Show Routes</span>';
+    document.getElementById("toggle-routes-btn").classList.remove("active");
+  } else {
+    if (map.getLayer("routes-line")) {
+      map.setLayoutProperty("routes-line", "visibility", "visible");
+    } else {
+      loadRoutes();
+    }
+    routesVisible = true;
+    document.getElementById("toggle-routes-btn").innerHTML =
+      '<i class="fas fa-route"></i><span>Hide Routes</span>';
+    document.getElementById("toggle-routes-btn").classList.add("active");
+  }
+}
+
+function loadRoutes() {
+  fetch(`${API_BASE_URL}/api/routes/lines`)
+    .then((response) => response.json())
     .then((data) => {
-      document.getElementById("loading").style.display = "none";
+      console.log(`Loaded ${data.features.length} route lines`);
 
-      // Update info panel
-      document.getElementById("cell-count").textContent = data.features.length;
-      if (data.features.length > 0 && data.features[0].properties.resolution) {
-        document.getElementById("resolution").textContent =
-          data.features[0].properties.resolution;
-      }
+      // Add route lines as a source
+      map.addSource("routes", {
+        type: "geojson",
+        data: data,
+      });
 
-      // Add GeoJSON layer to map
-      geojsonLayer = L.geoJSON(data, {
-        style: function (feature) {
-          const city = feature.properties.city || "Tokyo";
-          const color = cityColors[city] || "#3388ff";
-
-          return {
-            fillColor: color,
-            weight: 1,
-            opacity: 0.6,
-            color: "#666",
-            fillOpacity: 0.25,
-          };
+      // Add line layer
+      map.addLayer({
+        id: "routes-line",
+        type: "line",
+        source: "routes",
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
         },
-        onEachFeature: function (feature, layer) {
-          const city = feature.properties.city || "Unknown";
-          const baseColor = cityColors[city] || "#3388ff";
-
-          // Add hover effect
-          layer.on({
-            mouseover: function (e) {
-              const layer = e.target;
-              if (layer !== selectedLayer) {
-                layer.setStyle({
-                  fillOpacity: 0.5,
-                  weight: 2,
-                });
-              }
-            },
-            mouseout: function (e) {
-              const layer = e.target;
-              if (layer !== selectedLayer) {
-                layer.setStyle({
-                  fillOpacity: 0.25,
-                  weight: 1,
-                });
-              }
-            },
-            click: function (e) {
-              const layer = e.target;
-
-              // Reset previously selected layer
-              if (selectedLayer) {
-                const prevCity =
-                  selectedLayer.feature.properties.city || "Tokyo";
-                const prevColor = cityColors[prevCity] || "#3388ff";
-                selectedLayer.setStyle({
-                  fillOpacity: 0.25,
-                  weight: 1,
-                  fillColor: prevColor,
-                });
-              }
-
-              // Highlight selected layer
-              layer.setStyle({
-                fillOpacity: 0.7,
-                weight: 3,
-                fillColor: "#ff6b00",
-              });
-
-              selectedLayer = layer;
-
-              // Update info panel
-              const h3Index = feature.properties.h3_index || "Unknown";
-              document.getElementById("selected-cell").textContent = h3Index;
-              document.getElementById("selected-city").textContent =
-                "📍 " + city;
-              document.getElementById("selected-city").style.color = baseColor;
-            },
-          });
-
-          // Add popup with H3 index and city
-          if (feature.properties.h3_index) {
-            layer.bindPopup(`
-              <strong>${city}</strong><br>
-              <strong>H3 Index:</strong><br>
-              <span style="font-size: 11px;">${feature.properties.h3_index}</span>
-            `);
-          }
+        paint: {
+          "line-color": [
+            "match",
+            ["get", "route_type"],
+            "train",
+            "#a78bfa", // purple - shinkansen
+            "car",
+            "#60a5fa", // blue - car
+            "walk",
+            "#34d399", // green - walk
+            "flight",
+            "#f87171", // red - flight
+            "#94a3b8", // gray - default
+          ],
+          "line-width": 3,
+          "line-opacity": 0.9,
+          "line-blur": 0.5,
         },
-      }).addTo(map);
+      });
 
-      // Fit map to show all hexagons
-      map.fitBounds(geojsonLayer.getBounds());
+      // Add click handler for popups
+      map.on("click", "routes-line", (e) => {
+        const feature = e.features[0];
+        const routeName = feature.properties.route_name || "Unknown Route";
+        const routeType = feature.properties.route_type || "unknown";
+        const distanceKm = (feature.properties.distance / 1000).toFixed(1);
+        const durationMin = Math.round(feature.properties.duration / 60);
+
+        const typeIcons = {
+          train: "fa-train",
+          car: "fa-car",
+          walk: "fa-walking",
+          flight: "fa-plane",
+        };
+
+        const typeLabels = {
+          train: "Shinkansen",
+          car: "Car",
+          walk: "Walking",
+          flight: "Flight",
+        };
+
+        new mapboxgl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML(
+            `
+            <strong>${routeName}</strong><br>
+            <div style="display: flex; align-items: center; gap: 6px; margin: 8px 0;">
+              <i class="fas ${typeIcons[routeType] || "fa-map-marker-alt"}" style="width: 16px;"></i>
+              <span>${typeLabels[routeType] || routeType}</span>
+            </div>
+            Distance: ${distanceKm} km<br>
+            Duration: ${durationMin} min
+          `,
+          )
+          .addTo(map);
+      });
+
+      // Change cursor on hover
+      map.on("mouseenter", "routes-line", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+
+      map.on("mouseleave", "routes-line", () => {
+        map.getCanvas().style.cursor = "";
+      });
+
+      routesVisible = true;
+      document.getElementById("toggle-routes-btn").innerHTML =
+        '<i class="fas fa-route"></i><span>Hide Routes</span>';
+      document.getElementById("toggle-routes-btn").classList.add("active");
     })
     .catch((error) => {
-      document.getElementById("loading").textContent =
-        "Error loading GeoJSON: " + error.message;
-      console.error("Error loading GeoJSON:", error);
+      console.error("Error loading routes:", error);
+      document.getElementById("toggle-routes-btn").textContent =
+        "Error Loading Routes";
     });
 }

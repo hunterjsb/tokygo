@@ -3,48 +3,77 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Tokyo, Kyoto & Osaka - H3 Hexagons</title>
+        <title>Japan Travel</title>
+
+        <!-- Mapbox GL JS -->
+        <link
+            href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css"
+            rel="stylesheet"
+        />
+        <script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
+
+        <!-- Font Awesome -->
         <link
             rel="stylesheet"
-            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
         />
+
         <link rel="stylesheet" href="css/styles.css" />
     </head>
     <body>
         <div id="loading" class="loading">Loading Tokyo, Kyoto & Osaka...</div>
         <div id="map"></div>
-        <div class="info-panel">
-            <h2>🗾 Japan Travel Map</h2>
-            <button
-                id="toggle-btn"
-                class="toggle-btn"
-                onclick="toggleHexagons()"
-            >
-                Hide Hexagons
-            </button>
-            <p><strong>Total Cells:</strong> <span id="cell-count">-</span></p>
-            <p><strong>Resolution:</strong> <span id="resolution">-</span></p>
-            <p><strong>Selected Cell:</strong></p>
-            <p
-                id="selected-cell"
-                style="font-size: 12px; word-break: break-all; color: #0078d7"
-            >
-                Click a hexagon
-            </p>
-            <p
-                id="selected-city"
-                style="font-size: 14px; font-weight: bold; margin-top: 5px"
-            ></p>
 
-            <div class="city-legend">
-                <strong>Cities:</strong>
-                <div id="legend-items">
-                    <!-- Legend items will be populated dynamically -->
+        <div class="info-panel" id="info-panel">
+            <div class="panel-header">
+                <h2>Japan Travel</h2>
+                <button
+                    class="collapse-btn"
+                    onclick="togglePanel()"
+                    aria-label="Toggle panel"
+                >
+                    <i class="fas fa-chevron-down" id="collapse-icon"></i>
+                </button>
+            </div>
+            <div class="panel-content" id="panel-content">
+                <button
+                    id="toggle-routes-btn"
+                    class="toggle-btn"
+                    onclick="toggleRoutes()"
+                >
+                    <i class="fas fa-route"></i>
+                    <span>Show Routes</span>
+                </button>
+
+                <div class="city-legend">
+                    <strong>Cities</strong>
+                    <div id="legend-items">
+                        <!-- Legend items will be populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="route-legend">
+                    <strong>Routes</strong>
+                    <div class="legend-item">
+                        <div
+                            class="route-line"
+                            style="background: #a78bfa"
+                        ></div>
+                        <i class="fas fa-train legend-icon"></i>
+                        <span>Shinkansen</span>
+                    </div>
+                    <div class="legend-item">
+                        <div
+                            class="route-line"
+                            style="background: #60a5fa"
+                        ></div>
+                        <i class="fas fa-car legend-icon"></i>
+                        <span>Car</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script src="js/map.js"></script>
     </body>
 </html>

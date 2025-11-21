@@ -1,88 +1,283 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
     padding: 0;
     margin: 0;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: #000;
+    color: #ededed;
+    overflow: hidden;
 }
 
 #map {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
     background: #000;
-    height: 100vh;
-}
-
-.leaflet-layer,
-.leaflet-control-zoom-in,
-.leaflet-control-zoom-out,
-.leaflet-control-attribution {
-    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
 
 .info-panel {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    background: #1a1a1a;
-    color: #e0e0e0;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    color: #ededed;
+    padding: 0;
+    border-radius: 20px 20px 0 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: none;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.6);
     z-index: 1000;
-    max-width: 280px;
-    border: 1px solid #333;
+    transition: all 0.3s ease;
+}
+
+.info-panel.collapsed .panel-content {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .info-panel {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        bottom: auto;
+        right: auto;
+        max-width: 280px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+}
+
+.info-panel:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+}
+
+@media (min-width: 768px) {
+    .panel-header {
+        padding: 20px 20px 0 20px;
+    }
+}
+
+.panel-content {
+    padding: 0 16px 16px 16px;
+}
+
+@media (min-width: 768px) {
+    .panel-content {
+        padding: 0 20px 20px 20px;
+    }
 }
 
 .info-panel h2 {
-    margin: 0 0 10px 0;
-    font-size: 18px;
-    color: #ffffff;
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.01em;
+}
+
+@media (min-width: 768px) {
+    .info-panel h2 {
+        font-size: 16px;
+    }
+}
+
+.collapse-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.collapse-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+}
+
+.collapse-btn:active {
+    transform: scale(0.95);
+}
+
+@media (min-width: 768px) {
+    .collapse-btn {
+        display: none;
+    }
+
+    .info-panel.collapsed .panel-content {
+        display: block;
+    }
 }
 
 .toggle-btn {
     width: 100%;
-    padding: 8px 12px;
-    margin: 10px 0;
-    background: #2c2c2c;
-    color: #e0e0e0;
-    border: 1px solid #444;
-    border-radius: 5px;
+    padding: 12px 16px;
+    margin: 12px 0 12px 0;
+    background: rgba(255, 255, 255, 0.06);
+    color: #ededed;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 13px;
-    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+@media (min-width: 768px) {
+    .toggle-btn {
+        padding: 10px 16px;
+        margin: 16px 0 16px 0;
+        font-size: 13px;
+    }
 }
 
 .toggle-btn:hover {
-    background: #3c3c3c;
-    border-color: #555;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .toggle-btn:active {
-    background: #1c1c1c;
+    transform: scale(0.98);
 }
 
-.info-panel p {
-    margin: 5px 0;
-    font-size: 14px;
-    color: #b0b0b0;
+.toggle-btn.active {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
 }
 
 .city-legend {
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid #444;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 768px) {
+    .city-legend {
+        margin-top: 16px;
+        padding-top: 16px;
+    }
+}
+
+.city-legend strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+@media (min-width: 768px) {
+    .city-legend strong {
+        margin-bottom: 12px;
+        font-size: 12px;
+    }
 }
 
 .legend-item {
     display: flex;
     align-items: center;
-    margin: 5px 0;
-    font-size: 13px;
-    color: #e0e0e0;
+    margin: 6px 0;
+    font-size: 14px;
+    color: #ededed;
+    font-weight: 500;
 }
 
-.legend-color {
+@media (min-width: 768px) {
+    .legend-item {
+        margin: 8px 0;
+        font-size: 13px;
+    }
+}
+
+.legend-icon {
+    font-size: 16px;
+    margin-right: 12px;
     width: 20px;
-    height: 20px;
-    border-radius: 3px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+@media (min-width: 768px) {
+    .legend-icon {
+        font-size: 14px;
+        width: 18px;
+        margin-right: 10px;
+    }
+}
+
+.route-legend {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 768px) {
+    .route-legend {
+        margin-top: 16px;
+        padding-top: 16px;
+    }
+}
+
+.route-legend strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+@media (min-width: 768px) {
+    .route-legend strong {
+        margin-bottom: 12px;
+        font-size: 12px;
+    }
+}
+
+.route-line {
+    width: 20px;
+    height: 3px;
+    border-radius: 2px;
     margin-right: 8px;
-    border: 1px solid #666;
+}
+
+@media (min-width: 768px) {
+    .route-line {
+        width: 18px;
+    }
 }
 
 .loading {
@@ -90,12 +285,158 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #1a1a1a;
-    color: #e0e0e0;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #ededed;
+    padding: 24px 32px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     z-index: 2000;
-    font-size: 16px;
-    border: 1px solid #333;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.city-marker {
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.city-marker:hover,
+.city-marker:active {
+    transform: scale(1.15);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+@media (hover: hover) {
+    .city-marker:hover {
+        transform: scale(1.1);
+    }
+}
+
+/* Mapbox controls dark theme */
+.mapboxgl-ctrl-top-right {
+    top: 16px;
+    right: 16px;
+}
+
+@media (max-width: 767px) {
+    .mapboxgl-ctrl-top-right {
+        top: 12px;
+        right: 12px;
+    }
+}
+
+.mapboxgl-ctrl-group {
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+.mapboxgl-ctrl-group button {
+    background-color: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.mapboxgl-ctrl-group button:last-child {
+    border-bottom: none !important;
+}
+
+.mapboxgl-ctrl-group button:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.mapboxgl-ctrl button.mapboxgl-ctrl-zoom-in .mapboxgl-ctrl-icon,
+.mapboxgl-ctrl button.mapboxgl-ctrl-zoom-out .mapboxgl-ctrl-icon {
+    background-color: #fff;
+}
+
+/* Mapbox popup dark theme */
+.mapboxgl-popup-content {
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #ededed;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    padding: 12px 16px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.mapboxgl-popup-content strong {
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+@media (max-width: 767px) {
+    .mapboxgl-popup-content {
+        font-size: 14px;
+        padding: 14px 18px;
+    }
+}
+
+.mapboxgl-popup-close-button {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 20px;
+    padding: 4px 8px;
+}
+
+.mapboxgl-popup-close-button:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+    border-bottom-color: rgba(0, 0, 0, 0.9);
+}
+
+.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+    border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+    border-right-color: rgba(0, 0, 0, 0.9);
+}
+
+.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+    border-left-color: rgba(0, 0, 0, 0.9);
+}
+
+/* Attribution */
+.mapboxgl-ctrl-attrib {
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.mapboxgl-ctrl-attrib a {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.mapboxgl-ctrl-attrib a:hover {
+    color: #fff;
 }
