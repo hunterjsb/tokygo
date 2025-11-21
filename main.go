@@ -19,12 +19,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("cell ", cell)
+	fmt.Println("cell ", cell) // 0x8a283082a677fff
 
 	const h h3.Cell = 0x8a283082a677fff
 	latLng, err = h.LatLng()
 	if err != nil {
 		panic(err)
 	}
+
+	bounds, err := h.Boundary()
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println("lat-long ", latLng)
+	fmt.Println("boundaries ", bounds)
 }
