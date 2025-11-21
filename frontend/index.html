@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Tokyo, Kyoto & Osaka - H3 Hexagons</title>
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        />
+        <link rel="stylesheet" href="css/styles.css" />
+    </head>
+    <body>
+        <div id="loading" class="loading">Loading Tokyo, Kyoto & Osaka...</div>
+        <div id="map"></div>
+        <div class="info-panel">
+            <h2>🗾 Japan Travel Map</h2>
+            <button
+                id="toggle-btn"
+                class="toggle-btn"
+                onclick="toggleHexagons()"
+            >
+                Hide Hexagons
+            </button>
+            <p><strong>Total Cells:</strong> <span id="cell-count">-</span></p>
+            <p><strong>Resolution:</strong> <span id="resolution">-</span></p>
+            <p><strong>Selected Cell:</strong></p>
+            <p
+                id="selected-cell"
+                style="font-size: 12px; word-break: break-all; color: #0078d7"
+            >
+                Click a hexagon
+            </p>
+            <p
+                id="selected-city"
+                style="font-size: 14px; font-weight: bold; margin-top: 5px"
+            ></p>
+
+            <div class="city-legend">
+                <strong>Cities:</strong>
+                <div id="legend-items">
+                    <!-- Legend items will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="js/map.js"></script>
+    </body>
+</html>
