@@ -4,6 +4,9 @@
 
 set -e
 
+# Add Go to PATH
+export PATH=$PATH:/usr/local/go/bin
+
 cd /opt/tokygo
 
 echo "Building tokygo server..."
