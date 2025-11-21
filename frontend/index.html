@@ -21,55 +21,45 @@
         <link rel="stylesheet" href="css/styles.css" />
     </head>
     <body>
-        <div id="loading" class="loading">Loading Tokyo, Kyoto & Osaka...</div>
+        <div id="loading" class="loading">Loading...</div>
         <div id="map"></div>
 
-        <div class="info-panel" id="info-panel">
-            <div class="panel-header">
-                <h2>Japan Travel</h2>
-                <button
-                    class="collapse-btn"
-                    onclick="togglePanel()"
-                    aria-label="Toggle panel"
-                >
-                    <i class="fas fa-chevron-down" id="collapse-icon"></i>
-                </button>
-            </div>
-            <div class="panel-content" id="panel-content">
-                <button
-                    id="toggle-routes-btn"
-                    class="toggle-btn"
-                    onclick="toggleRoutes()"
-                >
-                    <i class="fas fa-route"></i>
-                    <span>Show Routes</span>
-                </button>
+        <div class="info-panel">
+            <h2>Japan Travel</h2>
+            <button
+                id="toggle-routes-btn"
+                class="toggle-btn active"
+                onclick="toggleRoutes()"
+            >
+                <i class="fas fa-route"></i>
+                <span>Hide Routes</span>
+            </button>
 
-                <div class="city-legend">
-                    <strong>Cities</strong>
-                    <div id="legend-items">
-                        <!-- Legend items will be populated dynamically -->
-                    </div>
+            <div class="legend">
+                <strong>Routes</strong>
+                <div class="legend-item">
+                    <div class="route-line" style="background: #a78bfa"></div>
+                    <span>Shinkansen</span>
                 </div>
+                <div class="legend-item">
+                    <div class="route-line" style="background: #60a5fa"></div>
+                    <span>Car</span>
+                </div>
+            </div>
 
-                <div class="route-legend">
-                    <strong>Routes</strong>
-                    <div class="legend-item">
-                        <div
-                            class="route-line"
-                            style="background: #a78bfa"
-                        ></div>
-                        <i class="fas fa-train legend-icon"></i>
-                        <span>Shinkansen</span>
-                    </div>
-                    <div class="legend-item">
-                        <div
-                            class="route-line"
-                            style="background: #60a5fa"
-                        ></div>
-                        <i class="fas fa-car legend-icon"></i>
-                        <span>Car</span>
-                    </div>
+            <div class="legend">
+                <strong>Locations</strong>
+                <div class="legend-item">
+                    <div class="location-dot" style="background: #60a5fa"></div>
+                    <span>Hotels</span>
+                </div>
+                <div class="legend-item">
+                    <div class="location-dot" style="background: #f87171"></div>
+                    <span>Airports</span>
+                </div>
+                <div class="legend-item">
+                    <div class="location-dot" style="background: #a78bfa"></div>
+                    <span>Stations</span>
                 </div>
             </div>
         </div>

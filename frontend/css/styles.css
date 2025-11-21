@@ -40,38 +40,15 @@ body {
     display: none;
 }
 
-.panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px;
-}
-
-.panel-content {
-    padding: 0 16px 16px;
+.info-panel {
+    padding: 20px;
 }
 
 .info-panel h2 {
-    margin: 0;
-    font-size: 15px;
+    margin: 0 0 16px 0;
+    font-size: 16px;
     font-weight: 600;
     letter-spacing: -0.01em;
-}
-
-.collapse-btn {
-    background: transparent;
-    border: none;
-    color: rgba(255, 255, 255, 0.6);
-    padding: 4px 8px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.collapse-btn:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 6px;
 }
 
 /* Toggle Button */
@@ -109,16 +86,14 @@ body {
     color: #fff;
 }
 
-/* Legends */
-.city-legend,
-.route-legend {
-    margin-top: 12px;
-    padding-top: 12px;
+/* Legend */
+.legend {
+    margin-top: 16px;
+    padding-top: 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.city-legend strong,
-.route-legend strong {
+.legend strong {
     display: block;
     margin-bottom: 8px;
     font-size: 11px;
@@ -136,14 +111,6 @@ body {
     font-weight: 500;
 }
 
-.legend-icon {
-    font-size: 16px;
-    width: 20px;
-    margin-right: 12px;
-    text-align: center;
-    color: rgba(255, 255, 255, 0.8);
-}
-
 .route-line {
     width: 20px;
     height: 3px;
@@ -151,29 +118,12 @@ body {
     margin-right: 8px;
 }
 
-/* City Markers */
-.city-marker {
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
-    color: #fff;
-    width: 36px;
-    height: 36px;
+.location-dot {
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.2s ease;
-}
-
-.city-marker:hover {
-    transform: scale(1.1);
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+    border: 2px solid #fff;
+    margin-right: 8px;
 }
 
 /* Loading */
@@ -267,56 +217,12 @@ body {
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     }
 
-    .info-panel.collapsed .panel-content {
-        display: block;
-    }
-
-    .panel-header {
-        padding: 20px 20px 0;
-    }
-
-    .panel-content {
-        padding: 0 20px 20px;
-    }
-
-    .info-panel h2 {
-        font-size: 16px;
-    }
-
-    .collapse-btn {
-        display: none;
-    }
-
     .toggle-btn {
         padding: 10px 16px;
-        margin: 16px 0;
         font-size: 13px;
-    }
-
-    .city-legend,
-    .route-legend {
-        margin-top: 16px;
-        padding-top: 16px;
-    }
-
-    .city-legend strong,
-    .route-legend strong {
-        margin-bottom: 12px;
-        font-size: 12px;
     }
 
     .legend-item {
-        margin: 8px 0;
         font-size: 13px;
-    }
-
-    .legend-icon {
-        font-size: 14px;
-        width: 18px;
-        margin-right: 10px;
-    }
-
-    .route-line {
-        width: 18px;
     }
 }

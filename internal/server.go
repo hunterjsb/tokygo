@@ -57,15 +57,13 @@ func NewServer(rootDir string) *Server {
 
 // RegisterHandlers sets up all HTTP routes
 func (s *Server) RegisterHandlers() {
-	// Health check endpoint (no CORS needed for health checks)
-	http.HandleFunc("/health", s.handleHealth)
-
 	// API endpoints with CORS support
 	http.HandleFunc("/api/cities", corsMiddleware(s.handleCities))
 	http.HandleFunc("/api/config", corsMiddleware(s.handleConfig))
 	http.HandleFunc("/api/routes", corsMiddleware(s.handleRoutes))
 
 	http.HandleFunc("/api/routes/lines", corsMiddleware(s.handleRoutesLines))
+	http.HandleFunc("/api/locations", corsMiddleware(s.handleLocations))
 	http.HandleFunc("/api/mapbox/directions", corsMiddleware(s.handleMapboxDirections))
 	http.HandleFunc("/api/mapbox/geocoding", corsMiddleware(s.handleMapboxGeocoding))
 
@@ -96,18 +94,6 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-// handleHealth returns server health status
-func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	response := map[string]interface{}{
-		"status": "healthy",
-		"time":   time.Now().UTC().Format(time.RFC3339),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -145,6 +131,18 @@ func (s *Server) handleRoutesLines(w http.ResponseWriter, r *http.Request) {
 	geojson := &GeoJSON{
 		Type:     "FeatureCollection",
 		Features: features,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(geojson)
+}
+
+// handleLocations returns trip locations as GeoJSON points
+func (s *Server) handleLocations(w http.ResponseWriter, r *http.Request) {
+	geojson, err := GetLocationsGeoJSON(s.Config.Resolution)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error generating locations GeoJSON: %v", err), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -1,80 +1,21 @@
-// Global variables
-let cityColors = {};
-let cities = [];
-let routesVisible = true;
+// Global state
 let map;
+let routesVisible = true;
 
 // API base URL - gets replaced at build time from .env
 const API_BASE_URL = "http://localhost:8080";
 
-// Mapbox public token (safe for frontend, used for map display)
+// Mapbox public token
 mapboxgl.accessToken =
   "pk.eyJ1IjoiaHVudGVyanNiIiwiYSI6ImNtaThkeWo4dzBiOTkyd3Exb3FpdzdweWQifQ.e8TLoDm5tLdFSr0KTwEpLA";
 
-// Fetch cities data from API
-fetch(`${API_BASE_URL}/api/cities`)
-  .then((response) => response.json())
-  .then((data) => {
-    cities = data.cities;
-    cityColors = data.colors;
+// Initialize
+document.addEventListener("DOMContentLoaded", () => {
+  initMap();
+  loadData();
+});
 
-    // Populate legend
-    populateLegend();
-
-    // Initialize map after cities are loaded
-    initializeMap();
-
-    // Load routes by default
-    loadRoutes();
-
-    // Hide loading indicator
-    document.getElementById("loading").style.display = "none";
-  })
-  .catch((error) => {
-    console.error("Error loading cities:", error);
-    document.getElementById("loading").textContent =
-      "Error loading cities: " + error.message;
-  });
-
-function populateLegend() {
-  const legendItems = document.getElementById("legend-items");
-  legendItems.innerHTML = "";
-
-  const cityIcons = {
-    Tokyo: "fa-building",
-    Kyoto: "fa-torii-gate",
-    Osaka: "fa-landmark",
-  };
-
-  cities.forEach((city) => {
-    const item = document.createElement("div");
-    item.className = "legend-item";
-    item.innerHTML = `
-      <i class="fas ${cityIcons[city.name] || "fa-map-marker-alt"} legend-icon"></i>
-      <span>${city.name}</span>
-    `;
-    legendItems.appendChild(item);
-  });
-}
-
-function togglePanel() {
-  const panel = document.getElementById("info-panel");
-  const content = document.getElementById("panel-content");
-  const icon = document.getElementById("collapse-icon");
-
-  panel.classList.toggle("collapsed");
-
-  if (panel.classList.contains("collapsed")) {
-    icon.classList.remove("fa-chevron-down");
-    icon.classList.add("fa-chevron-up");
-  } else {
-    icon.classList.remove("fa-chevron-up");
-    icon.classList.add("fa-chevron-down");
-  }
-}
-
-function initializeMap() {
-  // Initialize Mapbox map with sleek dark style
+function initMap() {
   map = new mapboxgl.Map({
     container: "map",
     style: "mapbox://styles/mapbox/dark-v11",
@@ -83,153 +24,167 @@ function initializeMap() {
     projection: "globe",
   });
 
-  // Add navigation controls
   map.addControl(new mapboxgl.NavigationControl(), "top-right");
+}
 
-  // Add city markers with Font Awesome icons
-  const cityIcons = {
-    Tokyo: "fa-building",
-    Kyoto: "fa-torii-gate",
-    Osaka: "fa-landmark",
-  };
+async function loadData() {
+  try {
+    // Load all data
+    const [routesData, locationsData] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/routes/lines`).then((r) => r.json()),
+      fetch(`${API_BASE_URL}/api/locations`).then((r) => r.json()),
+    ]);
 
-  cities.forEach((city) => {
-    const el = document.createElement("div");
-    el.className = "city-marker";
-    el.innerHTML = `<i class="fas ${cityIcons[city.name] || "fa-map-marker-alt"}"></i>`;
+    map.on("load", () => {
+      addRoutes(routesData);
+      addLocations(locationsData);
+      hideLoading();
+    });
+  } catch (error) {
+    console.error("Error loading data:", error);
+    showError(error.message);
+  }
+}
 
-    new mapboxgl.Marker({ element: el, anchor: "bottom", draggable: false })
-      .setLngLat([city.lng, city.lat])
-      .setPopup(
-        new mapboxgl.Popup({ offset: 25 }).setHTML(
-          `<div style="text-align: center;">
-            <i class="fas ${cityIcons[city.name]} fa-2x" style="margin-bottom: 8px; color: #fff;"></i><br>
-            <strong>${city.name}</strong>
-          </div>`,
-        ),
+function addRoutes(data) {
+  map.addSource("routes", {
+    type: "geojson",
+    data: data,
+  });
+
+  map.addLayer({
+    id: "routes-line",
+    type: "line",
+    source: "routes",
+    layout: {
+      "line-join": "round",
+      "line-cap": "round",
+    },
+    paint: {
+      "line-color": [
+        "match",
+        ["get", "route_type"],
+        "train",
+        "#a78bfa",
+        "car",
+        "#60a5fa",
+        "walk",
+        "#34d399",
+        "flight",
+        "#f87171",
+        "#94a3b8",
+      ],
+      "line-width": 3,
+      "line-opacity": 0.9,
+      "line-blur": 0.5,
+    },
+  });
+
+  // Route click handler
+  map.on("click", "routes-line", (e) => {
+    const props = e.features[0].properties;
+    const distanceKm = (props.distance / 1000).toFixed(1);
+    const durationMin = Math.round(props.duration / 60);
+
+    new mapboxgl.Popup()
+      .setLngLat(e.lngLat)
+      .setHTML(
+        `
+        <strong>${props.route_name}</strong><br>
+        ${distanceKm} km · ${durationMin} min
+      `,
       )
       .addTo(map);
+  });
+
+  map.on("mouseenter", "routes-line", () => {
+    map.getCanvas().style.cursor = "pointer";
+  });
+
+  map.on("mouseleave", "routes-line", () => {
+    map.getCanvas().style.cursor = "";
+  });
+}
+
+function addLocations(data) {
+  map.addSource("locations", {
+    type: "geojson",
+    data: data,
+  });
+
+  // Location circles
+  map.addLayer({
+    id: "locations",
+    type: "circle",
+    source: "locations",
+    paint: {
+      "circle-radius": 6,
+      "circle-color": [
+        "match",
+        ["get", "type"],
+        "hotel",
+        "#60a5fa",
+        "airport",
+        "#f87171",
+        "station",
+        "#a78bfa",
+        "#94a3b8",
+      ],
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#fff",
+      "circle-opacity": 0.9,
+    },
+  });
+
+  // Location click handler
+  map.on("click", "locations", (e) => {
+    const props = e.features[0].properties;
+    const coords = e.features[0].geometry.coordinates.slice();
+
+    new mapboxgl.Popup()
+      .setLngLat(coords)
+      .setHTML(
+        `
+        <strong>${props.name}</strong><br>
+        <span style="text-transform: capitalize;">${props.type}</span> · ${props.city}
+      `,
+      )
+      .addTo(map);
+  });
+
+  map.on("mouseenter", "locations", () => {
+    map.getCanvas().style.cursor = "pointer";
+  });
+
+  map.on("mouseleave", "locations", () => {
+    map.getCanvas().style.cursor = "";
   });
 }
 
 function toggleRoutes() {
+  if (!map.getLayer("routes-line")) return;
+
   if (routesVisible) {
-    if (map.getLayer("routes-line")) {
-      map.setLayoutProperty("routes-line", "visibility", "none");
-    }
-    routesVisible = false;
+    map.setLayoutProperty("routes-line", "visibility", "none");
     document.getElementById("toggle-routes-btn").innerHTML =
       '<i class="fas fa-route"></i><span>Show Routes</span>';
     document.getElementById("toggle-routes-btn").classList.remove("active");
   } else {
-    if (map.getLayer("routes-line")) {
-      map.setLayoutProperty("routes-line", "visibility", "visible");
-    } else {
-      loadRoutes();
-    }
-    routesVisible = true;
+    map.setLayoutProperty("routes-line", "visibility", "visible");
     document.getElementById("toggle-routes-btn").innerHTML =
       '<i class="fas fa-route"></i><span>Hide Routes</span>';
     document.getElementById("toggle-routes-btn").classList.add("active");
   }
+
+  routesVisible = !routesVisible;
 }
 
-function loadRoutes() {
-  fetch(`${API_BASE_URL}/api/routes/lines`)
-    .then((response) => response.json())
-    .then((data) => {
-      console.log(`Loaded ${data.features.length} route lines`);
+function hideLoading() {
+  document.getElementById("loading").style.display = "none";
+}
 
-      // Add route lines as a source
-      map.addSource("routes", {
-        type: "geojson",
-        data: data,
-      });
-
-      // Add line layer
-      map.addLayer({
-        id: "routes-line",
-        type: "line",
-        source: "routes",
-        layout: {
-          "line-join": "round",
-          "line-cap": "round",
-        },
-        paint: {
-          "line-color": [
-            "match",
-            ["get", "route_type"],
-            "train",
-            "#a78bfa", // purple - shinkansen
-            "car",
-            "#60a5fa", // blue - car
-            "walk",
-            "#34d399", // green - walk
-            "flight",
-            "#f87171", // red - flight
-            "#94a3b8", // gray - default
-          ],
-          "line-width": 3,
-          "line-opacity": 0.9,
-          "line-blur": 0.5,
-        },
-      });
-
-      // Add click handler for popups
-      map.on("click", "routes-line", (e) => {
-        const feature = e.features[0];
-        const routeName = feature.properties.route_name || "Unknown Route";
-        const routeType = feature.properties.route_type || "unknown";
-        const distanceKm = (feature.properties.distance / 1000).toFixed(1);
-        const durationMin = Math.round(feature.properties.duration / 60);
-
-        const typeIcons = {
-          train: "fa-train",
-          car: "fa-car",
-          walk: "fa-walking",
-          flight: "fa-plane",
-        };
-
-        const typeLabels = {
-          train: "Shinkansen",
-          car: "Car",
-          walk: "Walking",
-          flight: "Flight",
-        };
-
-        new mapboxgl.Popup()
-          .setLngLat(e.lngLat)
-          .setHTML(
-            `
-            <strong>${routeName}</strong><br>
-            <div style="display: flex; align-items: center; gap: 6px; margin: 8px 0;">
-              <i class="fas ${typeIcons[routeType] || "fa-map-marker-alt"}" style="width: 16px;"></i>
-              <span>${typeLabels[routeType] || routeType}</span>
-            </div>
-            Distance: ${distanceKm} km<br>
-            Duration: ${durationMin} min
-          `,
-          )
-          .addTo(map);
-      });
-
-      // Change cursor on hover
-      map.on("mouseenter", "routes-line", () => {
-        map.getCanvas().style.cursor = "pointer";
-      });
-
-      map.on("mouseleave", "routes-line", () => {
-        map.getCanvas().style.cursor = "";
-      });
-
-      routesVisible = true;
-      document.getElementById("toggle-routes-btn").innerHTML =
-        '<i class="fas fa-route"></i><span>Hide Routes</span>';
-      document.getElementById("toggle-routes-btn").classList.add("active");
-    })
-    .catch((error) => {
-      console.error("Error loading routes:", error);
-      document.getElementById("toggle-routes-btn").textContent =
-        "Error Loading Routes";
-    });
+function showError(message) {
+  const loading = document.getElementById("loading");
+  loading.textContent = "Error: " + message;
+  loading.style.color = "#f87171";
 }
