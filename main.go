@@ -15,7 +15,16 @@ func main() {
 	}
 
 	const res int = 10
+	cell, err := h3.LatLngToCell(latLng, res)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("cell ", cell)
 
-	cell, _ := h3.LatLngToCell(latLng, res)
-	fmt.Println(cell)
+	const h h3.Cell = 0x8a283082a677fff
+	latLng, err = h.LatLng()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("lat-long ", latLng)
 }
