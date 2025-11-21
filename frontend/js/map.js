@@ -104,6 +104,188 @@ function addRoutes(data) {
   map.on("mouseleave", "routes-line", () => {
     map.getCanvas().style.cursor = "";
   });
+
+  // Load and render entire hex grid
+  loadHexGrid();
+}
+
+async function loadHexGrid() {
+  const grids = {};
+  let inflightController = null;
+  // dynamic, formula-based resolution selection (no hardcoded map)
+
+  // H3 resolution control with smooth mapping + light hysteresis
+  let activeResolution = 3;
+  let lastResUpdateZoom = 0;
+
+  // Base resolution as a smooth function of zoom (tunable)
+  // Rough guide: zoom 4->res3, z6->res4, z8->res6, z10->res7, z12->res8, z14->res9, z16->res10, z18->res11
+  function computeBaseResolution(zoom) {
+    // More aggressive increase at high zoom (smaller hexes sooner)
+    // Example: z12->res8, z14->res9, z16->res10, z18->res11/12
+    const res = Math.floor(0.9 * zoom - 2.2);
+    return Math.max(3, Math.min(14, res));
+  }
+
+  // Apply hysteresis to avoid flicker when hovering around boundaries
+  function updateActiveResolution(zoom) {
+    const target = computeBaseResolution(zoom);
+    if (target > activeResolution) {
+      // require the zoom to move forward a bit before increasing res
+      if (zoom - lastResUpdateZoom >= 0.35 || target - activeResolution >= 2) {
+        activeResolution = target;
+        lastResUpdateZoom = zoom;
+      }
+    } else if (target < activeResolution) {
+      // require the zoom to move backward a bit before decreasing res
+      if (lastResUpdateZoom - zoom >= 0.35 || activeResolution - target >= 2) {
+        activeResolution = target;
+        lastResUpdateZoom = zoom;
+      }
+    }
+    return activeResolution;
+  }
+
+  // Removed preload loop; hex grid is fetched per-viewport on moveend using a computed resolution
+
+  // Add source and layers
+  map.addSource("hex-grid", {
+    type: "geojson",
+    promoteId: "h3_index",
+    data: {
+      type: "FeatureCollection",
+      features: [],
+    },
+  });
+
+  map.addLayer({
+    id: "hex-grid",
+    type: "fill",
+    source: "hex-grid",
+    paint: {
+      "fill-color": "#fff",
+      "fill-opacity": 0.01,
+    },
+  });
+
+  map.addLayer({
+    id: "hex-grid-outline",
+    type: "line",
+    source: "hex-grid",
+    paint: {
+      "line-color": "#fff",
+      "line-width": 0.4,
+      "line-opacity": 0.04,
+    },
+  });
+
+  // Spotlight layers (overlay) - opacity driven by feature-state
+  // Spotlight layers using filters (no feature-state)
+  map.addLayer({
+    id: "hex-spotlight-center",
+    type: "fill",
+    source: "hex-grid",
+    paint: {
+      "fill-color": "#ffffff",
+      "fill-opacity": 0.35,
+    },
+    filter: ["in", ["get", "h3_index"], ["literal", []]],
+  });
+
+  map.addLayer({
+    id: "hex-spotlight-ring",
+    type: "fill",
+    source: "hex-grid",
+    paint: {
+      "fill-color": "#ffffff",
+      "fill-opacity": 0.18,
+    },
+    filter: ["in", ["get", "h3_index"], ["literal", []]],
+  });
+
+  // Switch grid based on zoom/move end
+  map.on("moveend", async () => {
+    const zoom = map.getZoom();
+    const targetResolution = updateActiveResolution(zoom);
+
+    // Fetch only the cells in the current viewport at the target resolution
+    const bounds = map.getBounds();
+    const url = `${API_BASE_URL}/api/h3/grid_window?minLat=${bounds.getSouth()}&minLng=${bounds.getWest()}&maxLat=${bounds.getNorth()}&maxLng=${bounds.getEast()}&resolution=${targetResolution}`;
+
+    try {
+      // cancel any in-flight request for smoother interaction
+      if (inflightController) inflightController.abort();
+      inflightController = new AbortController();
+
+      const resp = await fetch(url, { signal: inflightController.signal });
+      const data = await resp.json();
+
+      const features = Object.entries(data.cells).map(
+        ([h3Index, cellData]) => ({
+          type: "Feature",
+          id: h3Index,
+          geometry: {
+            type: "Polygon",
+            coordinates: [cellData.boundary],
+          },
+          properties: {
+            h3_index: h3Index,
+            center: cellData.center,
+            neighbors: cellData.neighbors || [],
+          },
+        }),
+      );
+
+      map.getSource("hex-grid").setData({
+        type: "FeatureCollection",
+        features,
+      });
+    } catch (e) {
+      // noop on fetch errors to keep panning smooth
+    }
+  });
+
+  // Spotlight using setFilter on center + ring (no feature-state)
+  let rafHandle = null;
+
+  function setSpotlight(centerId, ringIds) {
+    const centerFilter = [
+      "in",
+      ["get", "h3_index"],
+      ["literal", centerId ? [centerId] : []],
+    ];
+    const ringFilter = ["in", ["get", "h3_index"], ["literal", ringIds || []]];
+    map.setFilter("hex-spotlight-center", centerFilter);
+    map.setFilter("hex-spotlight-ring", ringFilter);
+  }
+
+  map.on("mousemove", (e) => {
+    if (!map.getSource("hex-grid")) return;
+    if (rafHandle) cancelAnimationFrame(rafHandle);
+    rafHandle = requestAnimationFrame(() => {
+      const feats = map.queryRenderedFeatures(e.point, {
+        layers: ["hex-grid"],
+      });
+      if (!feats || feats.length === 0) {
+        setSpotlight(null, []);
+        return;
+      }
+      const f = feats[0];
+      const centerId = f.properties && f.properties.h3_index;
+      const neighbors = (f.properties && f.properties.neighbors) || [];
+      setSpotlight(centerId, neighbors);
+    });
+  });
+
+  map.on("mouseleave", () => {
+    if (!map.getSource("hex-grid")) return;
+    setSpotlight(null, []);
+  });
+
+  // Also trigger updates on zoom end for snappier resolution swaps
+  map.on("zoomend", () => map.fire("moveend"));
+  // Initial fetch at current zoom/viewport
+  map.fire("moveend");
 }
 
 function addLocations(data) {

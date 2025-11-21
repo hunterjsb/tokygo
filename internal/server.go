@@ -8,8 +8,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
+
+	"github.com/uber/h3-go/v4"
 )
 
 // corsMiddleware adds CORS headers to responses
@@ -64,6 +67,10 @@ func (s *Server) RegisterHandlers() {
 
 	http.HandleFunc("/api/routes/lines", corsMiddleware(s.handleRoutesLines))
 	http.HandleFunc("/api/locations", corsMiddleware(s.handleLocations))
+	http.HandleFunc("/api/h3/cell", corsMiddleware(s.handleH3Cell))
+	http.HandleFunc("/api/h3/ring", corsMiddleware(s.handleH3Ring))
+	http.HandleFunc("/api/h3/grid", corsMiddleware(s.handleH3Grid))
+	http.HandleFunc("/api/h3/grid_window", corsMiddleware(s.handleH3GridWindow))
 	http.HandleFunc("/api/mapbox/directions", corsMiddleware(s.handleMapboxDirections))
 	http.HandleFunc("/api/mapbox/geocoding", corsMiddleware(s.handleMapboxGeocoding))
 
@@ -147,6 +154,303 @@ func (s *Server) handleLocations(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(geojson)
+}
+
+// handleH3Cell returns H3 cell and boundary for a given lat/lng
+func (s *Server) handleH3Cell(w http.ResponseWriter, r *http.Request) {
+	latStr := r.URL.Query().Get("lat")
+	lngStr := r.URL.Query().Get("lng")
+	resStr := r.URL.Query().Get("resolution")
+
+	if latStr == "" || lngStr == "" {
+		http.Error(w, "lat and lng parameters required", http.StatusBadRequest)
+		return
+	}
+
+	lat, err := strconv.ParseFloat(latStr, 64)
+	if err != nil {
+		http.Error(w, "invalid lat", http.StatusBadRequest)
+		return
+	}
+
+	lng, err := strconv.ParseFloat(lngStr, 64)
+	if err != nil {
+		http.Error(w, "invalid lng", http.StatusBadRequest)
+		return
+	}
+
+	resolution := 9
+	if resStr != "" {
+		res, err := strconv.Atoi(resStr)
+		if err == nil {
+			resolution = res
+		}
+	}
+
+	latLng := h3.LatLng{Lat: lat, Lng: lng}
+	cell, err := h3.LatLngToCell(latLng, resolution)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error getting H3 cell: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	boundary, err := cell.Boundary()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error getting boundary: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	coords := make([][]float64, len(boundary)+1)
+	for i, latLng := range boundary {
+		coords[i] = []float64{latLng.Lng, latLng.Lat}
+	}
+	coords[len(boundary)] = []float64{boundary[0].Lng, boundary[0].Lat}
+
+	response := map[string]interface{}{
+		"h3_index": cell.String(),
+		"boundary": coords,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleH3Ring returns the ring of 6 neighboring cells
+func (s *Server) handleH3Ring(w http.ResponseWriter, r *http.Request) {
+	h3IndexStr := r.URL.Query().Get("h3_index")
+	if h3IndexStr == "" {
+		http.Error(w, "h3_index parameter required", http.StatusBadRequest)
+		return
+	}
+
+	cell := h3.Cell(0)
+	if err := cell.UnmarshalText([]byte(h3IndexStr)); err != nil {
+		http.Error(w, "invalid h3_index", http.StatusBadRequest)
+		return
+	}
+
+	// Get the ring of neighbors (k=1 means immediate neighbors)
+	ring, err := cell.GridDisk(1)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error getting ring: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	ringData := []map[string]interface{}{}
+	for _, ringCell := range ring {
+		if ringCell == cell {
+			continue // Skip the center cell
+		}
+
+		boundary, err := ringCell.Boundary()
+		if err != nil {
+			continue
+		}
+
+		coords := make([][]float64, len(boundary)+1)
+		for i, latLng := range boundary {
+			coords[i] = []float64{latLng.Lng, latLng.Lat}
+		}
+		coords[len(boundary)] = []float64{boundary[0].Lng, boundary[0].Lat}
+
+		ringData = append(ringData, map[string]interface{}{
+			"h3_index": ringCell.String(),
+			"boundary": coords,
+		})
+	}
+
+	response := map[string]interface{}{
+		"ring": ringData,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleH3Grid returns a precomputed grid of H3 cells for the Japan region
+func (s *Server) handleH3Grid(w http.ResponseWriter, r *http.Request) {
+	resStr := r.URL.Query().Get("resolution")
+	resolution := 7
+	if resStr != "" {
+		res, err := strconv.Atoi(resStr)
+		if err == nil {
+			resolution = res
+		}
+	}
+
+	// Define bounding box for Japan region
+	minLat, maxLat := 30.0, 46.0
+	minLng, maxLng := 128.0, 146.0
+
+	cells := make(map[string]map[string]interface{})
+
+	// Generate grid
+	for lat := minLat; lat <= maxLat; lat += 0.3 {
+		for lng := minLng; lng <= maxLng; lng += 0.3 {
+			latLng := h3.LatLng{Lat: lat, Lng: lng}
+			cell, err := h3.LatLngToCell(latLng, resolution)
+			if err != nil {
+				continue
+			}
+
+			h3Index := cell.String()
+			if _, exists := cells[h3Index]; exists {
+				continue
+			}
+
+			boundary, err := cell.Boundary()
+			if err != nil {
+				continue
+			}
+
+			coords := make([][]float64, len(boundary)+1)
+			for i, ll := range boundary {
+				coords[i] = []float64{ll.Lng, ll.Lat}
+			}
+			coords[len(boundary)] = []float64{boundary[0].Lng, boundary[0].Lat}
+
+			center, _ := cell.LatLng()
+
+			// Get neighbors
+			neighbors, _ := cell.GridDisk(1)
+			neighborIndices := []string{}
+			for _, n := range neighbors {
+				if n != cell {
+					neighborIndices = append(neighborIndices, n.String())
+				}
+			}
+
+			cells[h3Index] = map[string]interface{}{
+				"boundary":  coords,
+				"center":    []float64{center.Lng, center.Lat},
+				"neighbors": neighborIndices,
+			}
+		}
+	}
+
+	response := map[string]interface{}{
+		"cells":      cells,
+		"resolution": resolution,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleH3GridWindow returns H3 cells within a provided bounding box at a given resolution
+// Query params:
+// - minLat, minLng, maxLat, maxLng: bounding box (required)
+// - resolution: H3 resolution (optional, default 7)
+func (s *Server) handleH3GridWindow(w http.ResponseWriter, r *http.Request) {
+	minLatStr := r.URL.Query().Get("minLat")
+	minLngStr := r.URL.Query().Get("minLng")
+	maxLatStr := r.URL.Query().Get("maxLat")
+	maxLngStr := r.URL.Query().Get("maxLng")
+	resStr := r.URL.Query().Get("resolution")
+
+	if minLatStr == "" || minLngStr == "" || maxLatStr == "" || maxLngStr == "" {
+		http.Error(w, "minLat, minLng, maxLat, and maxLng parameters are required", http.StatusBadRequest)
+		return
+	}
+
+	minLat, err := strconv.ParseFloat(minLatStr, 64)
+	if err != nil {
+		http.Error(w, "invalid minLat", http.StatusBadRequest)
+		return
+	}
+	minLng, err := strconv.ParseFloat(minLngStr, 64)
+	if err != nil {
+		http.Error(w, "invalid minLng", http.StatusBadRequest)
+		return
+	}
+	maxLat, err := strconv.ParseFloat(maxLatStr, 64)
+	if err != nil {
+		http.Error(w, "invalid maxLat", http.StatusBadRequest)
+		return
+	}
+	maxLng, err := strconv.ParseFloat(maxLngStr, 64)
+	if err != nil {
+		http.Error(w, "invalid maxLng", http.StatusBadRequest)
+		return
+	}
+
+	if minLat > maxLat || minLng > maxLng {
+		http.Error(w, "min values must be <= max values", http.StatusBadRequest)
+		return
+	}
+
+	resolution := 7
+	if resStr != "" {
+		if res, err := strconv.Atoi(resStr); err == nil {
+			resolution = res
+		}
+	}
+
+	cells := make(map[string]map[string]interface{})
+
+	// Build a polygon for the current viewport bbox and densely cover it with H3 cells
+	loop := h3.GeoLoop{
+		{Lat: minLat, Lng: minLng},
+		{Lat: minLat, Lng: maxLng},
+		{Lat: maxLat, Lng: maxLng},
+		{Lat: maxLat, Lng: minLng},
+	}
+	polygon := h3.GeoPolygon{GeoLoop: loop}
+
+	polyCells, err := h3.PolygonToCells(polygon, resolution)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error generating H3 cells for bbox: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	for _, cell := range polyCells {
+		h3Index := cell.String()
+		if _, exists := cells[h3Index]; exists {
+			continue
+		}
+
+		boundary, err := cell.Boundary()
+		if err != nil {
+			continue
+		}
+
+		coords := make([][]float64, len(boundary)+1)
+		for i, ll := range boundary {
+			coords[i] = []float64{ll.Lng, ll.Lat}
+		}
+		coords[len(boundary)] = []float64{boundary[0].Lng, boundary[0].Lat}
+
+		center, _ := cell.LatLng()
+
+		// Neighbors (optional; helpful for UI effects)
+		neighbors, _ := cell.GridDisk(1)
+		neighborIndices := []string{}
+		for _, n := range neighbors {
+			if n != cell {
+				neighborIndices = append(neighborIndices, n.String())
+			}
+		}
+
+		cells[h3Index] = map[string]interface{}{
+			"boundary":  coords,
+			"center":    []float64{center.Lng, center.Lat},
+			"neighbors": neighborIndices,
+		}
+	}
+
+	response := map[string]interface{}{
+		"cells":      cells,
+		"resolution": resolution,
+		"bbox": map[string]float64{
+			"minLat": minLat,
+			"minLng": minLng,
+			"maxLat": maxLat,
+			"maxLng": maxLng,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // handleMapboxDirections proxies requests to Mapbox Directions API

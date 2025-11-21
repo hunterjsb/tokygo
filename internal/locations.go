@@ -102,7 +102,7 @@ func GetLocationsGeoJSON(resolution int) (*GeoJSON, error) {
 				Type:        "Point",
 				Coordinates: []float64{center.Lng, center.Lat},
 			},
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"name":       loc.Name,
 				"type":       string(loc.Type),
 				"city":       loc.City,
