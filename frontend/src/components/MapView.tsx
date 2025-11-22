@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { COLORS } from "@/lib/colors";
+import { useTheme } from "@/components/theme-provider";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -13,10 +14,12 @@ interface MapViewProps {
 export function MapView({ routesVisible }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
+  const tileLayer = useRef<L.TileLayer | null>(null);
   const routesLayer = useRef<L.LayerGroup | null>(null);
   const locationsLayer = useRef<L.LayerGroup | null>(null);
   const hexGridLayer = useRef<L.LayerGroup | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -28,8 +31,16 @@ export function MapView({ routesVisible }: MapViewProps) {
       zoomControl: false,
     });
 
-    // Add CARTO dark tiles (free, no token required)
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png", {
+    // Add CARTO tiles (free, no token required)
+    const isDark =
+      theme === "dark" ||
+      (theme === "system" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const tileUrl = isDark
+      ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+      : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
+
+    tileLayer.current = L.tileLayer(tileUrl, {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       maxZoom: 19,
@@ -67,7 +78,22 @@ export function MapView({ routesVisible }: MapViewProps) {
       map.current?.remove();
       map.current = null;
     };
-  }, []);
+  }, [theme]);
+
+  // Update map tiles when theme changes
+  useEffect(() => {
+    if (!map.current || !tileLayer.current) return;
+
+    const isDark =
+      theme === "dark" ||
+      (theme === "system" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const tileUrl = isDark
+      ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+      : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
+
+    tileLayer.current.setUrl(tileUrl);
+  }, [theme]);
 
   // Handle route visibility toggle
   useEffect(() => {
