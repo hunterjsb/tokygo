@@ -9,9 +9,27 @@ const API_BASE_URL = "http://localhost:8080";
 mapboxgl.accessToken =
   "pk.eyJ1IjoiaHVudGVyanNiIiwiYSI6ImNtaThkeWo4dzBiOTkyd3Exb3FpdzdweWQifQ.e8TLoDm5tLdFSr0KTwEpLA";
 
+// Centralized color palette for routes and locations
+const COLORS = {
+  routes: {
+    train: "#a78bfa",
+    car: "#60a5fa",
+    walk: "#34d399",
+    flight: "#f87171",
+    default: "#94a3b8",
+  },
+  locations: {
+    hotel: "#60a5fa",
+    airport: "#f87171",
+    station: "#a78bfa",
+    default: "#94a3b8",
+  },
+};
+
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
   initMap();
+  syncLegendColors();
   loadData();
 });
 
@@ -65,14 +83,14 @@ function addRoutes(data) {
         "match",
         ["get", "route_type"],
         "train",
-        "#a78bfa",
+        COLORS.routes.train,
         "car",
-        "#60a5fa",
+        COLORS.routes.car,
         "walk",
-        "#34d399",
+        COLORS.routes.walk,
         "flight",
-        "#f87171",
-        "#94a3b8",
+        COLORS.routes.flight,
+        COLORS.routes.default,
       ],
       "line-width": 3,
       "line-opacity": 0.9,
@@ -288,6 +306,21 @@ async function loadHexGrid() {
   map.fire("moveend");
 }
 
+function syncLegendColors() {
+  // Keep the side legend in sync with the actual palette used by layers
+  document.querySelectorAll(".route-line[data-route]").forEach((el) => {
+    const key = el.dataset.route;
+    const color = COLORS.routes[key] || COLORS.routes.default;
+    el.style.background = color;
+  });
+
+  document.querySelectorAll(".location-dot[data-location]").forEach((el) => {
+    const key = el.dataset.location;
+    const color = COLORS.locations[key] || COLORS.locations.default;
+    el.style.background = color;
+  });
+}
+
 function addLocations(data) {
   map.addSource("locations", {
     type: "geojson",
@@ -305,12 +338,12 @@ function addLocations(data) {
         "match",
         ["get", "type"],
         "hotel",
-        "#60a5fa",
+        COLORS.locations.hotel,
         "airport",
-        "#f87171",
+        COLORS.locations.airport,
         "station",
-        "#a78bfa",
-        "#94a3b8",
+        COLORS.locations.station,
+        COLORS.locations.default,
       ],
       "circle-stroke-width": 2,
       "circle-stroke-color": "#fff",
