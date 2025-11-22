@@ -29,6 +29,9 @@ export function MapView({ routesVisible }: MapViewProps) {
       center: [35.0, 135.5],
       zoom: 7,
       zoomControl: false,
+      touchZoom: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
     });
 
     // Add CARTO tiles (free, no token required)
@@ -46,8 +49,9 @@ export function MapView({ routesVisible }: MapViewProps) {
       maxZoom: 19,
     }).addTo(map.current);
 
-    // Add zoom control to top-right
-    L.control.zoom({ position: "topright" }).addTo(map.current);
+    // Add zoom control - bottom-right on mobile, top-right on desktop
+    const zoomPosition = window.innerWidth < 768 ? "bottomright" : "topright";
+    L.control.zoom({ position: zoomPosition }).addTo(map.current);
 
     // Initialize layer groups
     routesLayer.current = L.layerGroup().addTo(map.current);
