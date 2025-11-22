@@ -15,6 +15,17 @@ import (
 	"github.com/uber/h3-go/v4"
 )
 
+// json helpers for consistent JSON responses across handlers (generic)
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func okJSON(w http.ResponseWriter, v any) {
+	writeJSON(w, http.StatusOK, v)
+}
+
 // corsMiddleware adds CORS headers to responses
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -84,34 +95,31 @@ func (s *Server) RegisterHandlers() {
 
 // handleCities returns the cities data as JSON
 func (s *Server) handleCities(w http.ResponseWriter, r *http.Request) {
-	response := map[string]interface{}{
-		"cities": Cities,
-		"colors": CityColors,
+	response := CitiesResponse{
+		Cities: Cities,
+		Colors: CityColors,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	okJSON(w, response)
 }
 
 // handleConfig returns the server configuration
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
-	response := map[string]interface{}{
-		"resolution": s.Config.Resolution,
-		"radiusKm":   s.Config.RadiusKm,
+	response := ConfigResponse{
+		Resolution: s.Config.Resolution,
+		RadiusKm:   s.Config.RadiusKm,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	okJSON(w, response)
 }
 
 // handleRoutes returns the list of routes
 func (s *Server) handleRoutes(w http.ResponseWriter, r *http.Request) {
-	response := map[string]interface{}{
-		"routes": TripRoutes,
+	response := RoutesResponse{
+		Routes: TripRoutes,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	okJSON(w, response)
 }
 
 // handleRoutesLines returns route lines as GeoJSON LineStrings
@@ -125,7 +133,7 @@ func (s *Server) handleRoutesLines(w http.ResponseWriter, r *http.Request) {
 				Type:        "LineString",
 				Coordinates: route.Geometry,
 			},
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"route_name": route.Name,
 				"route_type": route.Type,
 				"distance":   route.Distance,
@@ -140,8 +148,7 @@ func (s *Server) handleRoutesLines(w http.ResponseWriter, r *http.Request) {
 		Features: features,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(geojson)
+	okJSON(w, geojson)
 }
 
 // handleLocations returns trip locations as GeoJSON points
@@ -152,8 +159,7 @@ func (s *Server) handleLocations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(geojson)
+	okJSON(w, geojson)
 }
 
 // handleH3Cell returns H3 cell and boundary for a given lat/lng
@@ -206,13 +212,12 @@ func (s *Server) handleH3Cell(w http.ResponseWriter, r *http.Request) {
 	}
 	coords[len(boundary)] = []float64{boundary[0].Lng, boundary[0].Lat}
 
-	response := map[string]interface{}{
-		"h3_index": cell.String(),
-		"boundary": coords,
+	response := H3CellResponse{
+		H3Index:  cell.String(),
+		Boundary: coords,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	okJSON(w, response)
 }
 
 // handleH3Ring returns the ring of 6 neighboring cells
@@ -236,7 +241,7 @@ func (s *Server) handleH3Ring(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ringData := []map[string]interface{}{}
+	ringData := []H3RingCell{}
 	for _, ringCell := range ring {
 		if ringCell == cell {
 			continue // Skip the center cell
@@ -253,18 +258,17 @@ func (s *Server) handleH3Ring(w http.ResponseWriter, r *http.Request) {
 		}
 		coords[len(boundary)] = []float64{boundary[0].Lng, boundary[0].Lat}
 
-		ringData = append(ringData, map[string]interface{}{
-			"h3_index": ringCell.String(),
-			"boundary": coords,
+		ringData = append(ringData, H3RingCell{
+			H3Index:  ringCell.String(),
+			Boundary: coords,
 		})
 	}
 
-	response := map[string]interface{}{
-		"ring": ringData,
+	response := H3RingResponse{
+		Ring: ringData,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	okJSON(w, response)
 }
 
 // handleH3Grid returns a precomputed grid of H3 cells for the Japan region
@@ -282,7 +286,7 @@ func (s *Server) handleH3Grid(w http.ResponseWriter, r *http.Request) {
 	minLat, maxLat := 30.0, 46.0
 	minLng, maxLng := 128.0, 146.0
 
-	cells := make(map[string]map[string]interface{})
+	cells := make(map[string]H3CellInfo)
 
 	// Generate grid
 	for lat := minLat; lat <= maxLat; lat += 0.3 {
@@ -320,21 +324,20 @@ func (s *Server) handleH3Grid(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			cells[h3Index] = map[string]interface{}{
-				"boundary":  coords,
-				"center":    []float64{center.Lng, center.Lat},
-				"neighbors": neighborIndices,
+			cells[h3Index] = H3CellInfo{
+				Boundary:  coords,
+				Center:    []float64{center.Lng, center.Lat},
+				Neighbors: neighborIndices,
 			}
 		}
 	}
 
-	response := map[string]interface{}{
-		"cells":      cells,
-		"resolution": resolution,
+	response := H3GridResponse{
+		Cells:      cells,
+		Resolution: resolution,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	okJSON(w, response)
 }
 
 // handleH3GridWindow returns H3 cells within a provided bounding box at a given resolution
@@ -386,7 +389,7 @@ func (s *Server) handleH3GridWindow(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	cells := make(map[string]map[string]interface{})
+	cells := make(map[string]H3CellInfo)
 
 	// Build a polygon for the current viewport bbox and densely cover it with H3 cells
 	loop := h3.GeoLoop{
@@ -431,26 +434,25 @@ func (s *Server) handleH3GridWindow(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		cells[h3Index] = map[string]interface{}{
-			"boundary":  coords,
-			"center":    []float64{center.Lng, center.Lat},
-			"neighbors": neighborIndices,
+		cells[h3Index] = H3CellInfo{
+			Boundary:  coords,
+			Center:    []float64{center.Lng, center.Lat},
+			Neighbors: neighborIndices,
 		}
 	}
 
-	response := map[string]interface{}{
-		"cells":      cells,
-		"resolution": resolution,
-		"bbox": map[string]float64{
-			"minLat": minLat,
-			"minLng": minLng,
-			"maxLat": maxLat,
-			"maxLng": maxLng,
+	response := H3GridWindowResponse{
+		Cells:      cells,
+		Resolution: resolution,
+		BBox: BBox{
+			MinLat: minLat,
+			MinLng: minLng,
+			MaxLat: maxLat,
+			MaxLng: maxLng,
 		},
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	okJSON(w, response)
 }
 
 // handleMapboxDirections proxies requests to Mapbox Directions API
