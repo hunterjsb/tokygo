@@ -23,6 +23,7 @@ echo "📡 API URL: $API_URL"
 echo "⚙️  Creating .env file for Vite..."
 cat > .env << EOF
 VITE_API_BASE_URL=$API_URL
+VITE_BASE_PATH=${BASE_PATH:-/}
 EOF
 
 # Install dependencies

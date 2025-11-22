@@ -42,6 +42,7 @@ jobs:
       - name: Build frontend
         env:
           API_URL: ${{ secrets.API_URL }}
+          BASE_PATH: /tokygo/
         run: |
           chmod +x scripts/build.sh
           ./scripts/build.sh
