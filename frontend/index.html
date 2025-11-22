@@ -1,69 +1,13 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Japan Travel</title>
-
-        <!-- Mapbox GL JS -->
-        <link
-            href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css"
-            rel="stylesheet"
-        />
-        <script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
-
-        <!-- Font Awesome -->
-        <link
-            rel="stylesheet"
-            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-        />
-
-        <link rel="stylesheet" href="css/styles.css" />
-    </head>
-    <body>
-        <div id="loading" class="loading">Loading...</div>
-        <div id="map"></div>
-
-        <div class="info-panel">
-            <h2>Japan Travel</h2>
-            <button
-                id="toggle-routes-btn"
-                class="toggle-btn active"
-                onclick="toggleRoutes()"
-            >
-                <i class="fas fa-route"></i>
-                <span>Hide Routes</span>
-            </button>
-
-            <div class="legend">
-                <strong>Routes</strong>
-                <div class="legend-item">
-                    <div class="route-line" data-route="train"></div>
-                    <span>Shinkansen</span>
-                </div>
-                <div class="legend-item">
-                    <div class="route-line" data-route="car"></div>
-                    <span>Car</span>
-                </div>
-            </div>
-
-            <div class="legend">
-                <strong>Locations</strong>
-                <div class="legend-item">
-                    <div class="location-dot" data-location="hotel"></div>
-                    <span>Hotels</span>
-                </div>
-                <div class="legend-item">
-                    <div class="location-dot" data-location="airport"></div>
-                    <span>Airports</span>
-                </div>
-                <div class="legend-item">
-                    <div class="location-dot" data-location="station"></div>
-                    <span>Stations</span>
-                </div>
-            </div>
-        </div>
-
-        <script src="js/map.js"></script>
-    </body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Japan Travel - Tokygo</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

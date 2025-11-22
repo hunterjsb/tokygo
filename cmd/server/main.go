@@ -47,10 +47,19 @@ func main() {
 		port = "8080"
 	}
 
-	// Get the root directory (two levels up from cmd/server)
+	// Get the root directory (find it by looking for go.mod)
 	rootDir, err := filepath.Abs(".")
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	// If we're in cmd/server, go up two levels
+	if filepath.Base(rootDir) == "server" {
+		rootDir = filepath.Join(rootDir, "../..")
+		rootDir, err = filepath.Abs(rootDir)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// Create server and register handlers
@@ -58,7 +67,7 @@ func main() {
 	server.RegisterHandlers()
 
 	addr := fmt.Sprintf(":%s", port)
-	frontendDir := filepath.Join(rootDir, "frontend")
+	frontendDir := filepath.Join(rootDir, "frontend", "dist")
 
 	fmt.Printf("🚀 Server starting on http://localhost%s\n", addr)
 	fmt.Printf("📂 Serving frontend from: %s\n", frontendDir)

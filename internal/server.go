@@ -86,7 +86,7 @@ func (s *Server) RegisterHandlers() {
 	http.HandleFunc("/api/mapbox/geocoding", corsMiddleware(s.handleMapboxGeocoding))
 
 	// Custom handler for static files that doesn't catch /api routes
-	frontendDir := filepath.Join(s.RootDir, "frontend")
+	frontendDir := filepath.Join(s.RootDir, "frontend", "dist")
 	fs := http.FileServer(http.Dir(frontendDir))
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fs.ServeHTTP(w, r)

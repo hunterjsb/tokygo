@@ -1,44 +1,47 @@
 #!/bin/bash
 
 # Build script for GitHub Pages deployment
-# This script generates the frontend with the correct API URL
+# This script builds the React + Vite frontend with the correct API URL
 
 set -e
 
 echo "🏗️  Building frontend for deployment..."
 
-# Use environment variables from command line, or load from .env, or use defaults
-if [ -z "$API_URL" ] || [ -z "$MAPBOX_TOKEN" ]; then
-    if [ -f .env ]; then
-        export $(cat .env | grep -v '^#' | xargs)
-    fi
+# Navigate to frontend directory
+cd frontend
+
+# Load from root .env if not set
+if [ -f ../.env ]; then
+    export $(cat ../.env | grep -v '^#' | xargs)
 fi
 
-# Final fallback to defaults
+# Use environment variables or defaults
 API_URL=${API_URL:-"http://localhost:8080"}
-MAPBOX_TOKEN=${MAPBOX_TOKEN:-""}
 echo "📡 API URL: $API_URL"
-echo "🗺️  Mapbox Token: ${MAPBOX_TOKEN:0:20}..."
 
-# Create dist directory
-DIST_DIR="dist"
-rm -rf $DIST_DIR
-mkdir -p $DIST_DIR
+# Create .env file for Vite build
+echo "⚙️  Creating .env file for Vite..."
+cat > .env << EOF
+VITE_API_BASE_URL=$API_URL
+EOF
 
-# Copy frontend files to dist
-echo "📦 Copying frontend files..."
-cp -r frontend/* $DIST_DIR/
+# Install dependencies
+echo "📦 Installing dependencies..."
+npm ci
 
-# Inject API_URL and MAPBOX_TOKEN into map.js
-echo "⚙️  Injecting API_URL and MAPBOX_TOKEN into map.js..."
-sed -i.bak "s|const API_BASE_URL = .*|const API_BASE_URL = \"$API_URL\";|g" $DIST_DIR/js/map.js
-sed -i.bak "s|const MAPBOX_TOKEN = .*|const MAPBOX_TOKEN = \"$MAPBOX_TOKEN\";|g" $DIST_DIR/js/map.js
-rm $DIST_DIR/js/map.js.bak
+# Build the frontend
+echo "🔨 Building React app..."
+npm run build
 
-echo "✅ Build complete! Output in $DIST_DIR/"
+# Move dist to project root for GitHub Pages
+echo "📤 Preparing dist for GitHub Pages..."
+cd ..
+rm -rf dist
+cp -r frontend/dist ./dist
+
+echo "✅ Build complete! Output in ./dist/"
 echo ""
 echo "To test locally:"
-echo "  cd $DIST_DIR && python3 -m http.server 8000"
+echo "  cd dist && python3 -m http.server 8000"
 echo ""
-echo "To deploy to GitHub Pages:"
-echo "  Copy contents of $DIST_DIR to your gh-pages branch"
+echo "Note: The built app uses free CARTO map tiles and expects the backend API at $API_URL"
