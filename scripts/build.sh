@@ -17,14 +17,22 @@ fi
 
 # Use environment variables or defaults
 API_URL=${API_URL:-"http://localhost:8080"}
+BASE_PATH=${BASE_PATH:-/}
 echo "📡 API URL: $API_URL"
+echo "🔗 BASE_PATH: $BASE_PATH"
 
 # Create .env file for Vite build
 echo "⚙️  Creating .env file for Vite..."
 cat > .env << EOF
 VITE_API_BASE_URL=$API_URL
-VITE_BASE_PATH=${BASE_PATH:-/}
+VITE_BASE_PATH=$BASE_PATH
 EOF
+
+echo "📄 Generated .env file:"
+cat .env
+
+# Export VITE_BASE_PATH so vite.config.ts can read it
+export VITE_BASE_PATH=$BASE_PATH
 
 # Install dependencies
 echo "📦 Installing dependencies..."
